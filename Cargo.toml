@@ -1,0 +1,12 @@
+[package]
+authors = ["Xuanwo <github@xuanwo.io>>"]
+categories = ["command-line-utilities"]
+description = "Replace with description"
+documentation = "https://docs.rs/formwork"
+repository = "https://github.com/Xuanwo/formwork"
+edition = "2021"
+license = "Apache-2.0"
+name = "formwork"
+version = "0.0.1"
+
+[dependencies]
