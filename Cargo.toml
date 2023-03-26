@@ -1,12 +1,33 @@
 [package]
-authors = ["Xuanwo <github@xuanwo.io>>"]
+authors = ["sundy-li <sundyli@apache.org>>"]
 categories = ["command-line-utilities"]
 description = "Replace with description"
-documentation = "https://docs.rs/formwork"
-repository = "https://github.com/Xuanwo/formwork"
+documentation = "https://docs.rs/arrow_cli"
+repository = "https://github.com/sundy-li/arrow_cli"
 edition = "2021"
 license = "Apache-2.0"
-name = "formwork"
+name = "arrow_cli"
 version = "0.0.1"
 
 [dependencies]
+shlex = "1.1.0"
+isatty = "0.1.9"
+rustyline = "11.0.0"
+arrow-flight = { version = "35.0.0", features = ["flight-sql-experimental"] }
+arrow = "35.0.0"
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+arrow-cast = { version = "35.0.0", features = ["prettyprint"] }
+tokio = { version = "1.26", features = [
+	"macros",
+	"rt",
+	"rt-multi-thread",
+	"sync",
+	"parking_lot",
+] }
+
+tonic = { version = "0.8", default-features = false, features = [
+	"transport",
+	"codegen",
+	"prost",
+] }
+clap = { version = "4.1.0", features = ["derive"] }
