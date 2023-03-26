@@ -102,10 +102,8 @@ impl Completer for CliHelper {
 impl Validator for CliHelper {
     fn validate(&self, ctx: &mut ValidationContext<'_>) -> Result<ValidationResult> {
         let input = ctx.input().trim_end();
-        if let Some(_) = input.strip_suffix('\\') {
+        if input.strip_suffix('\\').is_some() {
             Ok(ValidationResult::Incomplete)
-        } else if input.starts_with('.') {
-            Ok(ValidationResult::Valid(None))
         } else {
             Ok(ValidationResult::Valid(None))
         }
