@@ -10,7 +10,7 @@ name = "arrow_cli"
 version = "0.0.1"
 
 [dependencies]
-clap = "4.1.13"
+clap = { version = "4.1.13", features = ["derive", "cargo"] }
 shlex = "1.1.0"
 isatty = "0.1.9"
 rustyline = "11.0.0"
