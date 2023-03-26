@@ -23,6 +23,7 @@ use rustyline::completion::FilenameCompleter;
 use rustyline::completion::Pair;
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
+use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::ValidationContext;
 use rustyline::validate::ValidationResult;
@@ -33,17 +34,49 @@ use rustyline::Result;
 
 pub struct CliHelper {
     completer: FilenameCompleter,
+    highlighter: MatchingBracketHighlighter,
 }
 
 impl CliHelper {
     pub fn new() -> Self {
         Self {
             completer: FilenameCompleter::new(),
+            highlighter: MatchingBracketHighlighter::new(),
         }
     }
 }
 
-impl Highlighter for CliHelper {}
+impl Highlighter for CliHelper {
+    fn highlight<'l>(&self, line: &'l str, pos: usize) -> std::borrow::Cow<'l, str> {
+        self.highlighter.highlight(line, pos)
+    }
+
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        default: bool,
+    ) -> std::borrow::Cow<'b, str> {
+        let _ = default;
+        std::borrow::Cow::Borrowed(prompt)
+    }
+
+    fn highlight_hint<'h>(&self, hint: &'h str) -> std::borrow::Cow<'h, str> {
+        std::borrow::Cow::Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
+    }
+
+    fn highlight_candidate<'c>(
+        &self,
+        candidate: &'c str, // FIXME should be Completer::Candidate
+        completion: rustyline::CompletionType,
+    ) -> std::borrow::Cow<'c, str> {
+        let _ = completion;
+        std::borrow::Cow::Borrowed(candidate)
+    }
+
+    fn highlight_char(&self, line: &str, pos: usize) -> bool {
+        self.highlighter.highlight_char(line, pos)
+    }
+}
 
 impl Hinter for CliHelper {
     type Hint = String;
@@ -58,14 +91,18 @@ impl Completer for CliHelper {
         pos: usize,
         ctx: &Context<'_>,
     ) -> std::result::Result<(usize, Vec<Pair>), ReadlineError> {
-        Ok((0, Vec::with_capacity(0)))
+        let keyword_candidates = KeyWordCompleter::complete(line, pos);
+        if !keyword_candidates.1.is_empty() {
+            return Ok(keyword_candidates);
+        }
+        self.completer.complete(line, pos, ctx)
     }
 }
 
 impl Validator for CliHelper {
     fn validate(&self, ctx: &mut ValidationContext<'_>) -> Result<ValidationResult> {
         let input = ctx.input().trim_end();
-        if let Some(sql) = input.strip_suffix('\\') {
+        if let Some(_) = input.strip_suffix('\\') {
             Ok(ValidationResult::Incomplete)
         } else if input.starts_with('.') {
             Ok(ValidationResult::Valid(None))
@@ -76,3 +113,56 @@ impl Validator for CliHelper {
 }
 
 impl Helper for CliHelper {}
+
+struct KeyWordCompleter {}
+
+impl KeyWordCompleter {
+    fn complete(s: &str, pos: usize) -> (usize, Vec<Pair>) {
+        let hint = s.split(|p: char| p.is_whitespace()).last().unwrap_or(s);
+        const KEYWORDS: &[&str] = &[
+            "SELECT",
+            "FROM",
+            "TABLE",
+            "VIEW",
+            "INFORMATION",
+            "WHERE",
+            "GROUP BY",
+            "HAVING",
+            "ORDER BY",
+            "LIMIT",
+            "OFFSET",
+            "JOIN",
+            "INNER JOIN",
+            "OUTER JOIN",
+            "LEFT JOIN",
+            "RIGHT JOIN",
+            "CROSS JOIN",
+            "UNION",
+            "UNION ALL",
+            "INSERT INTO",
+            "UPDATE",
+            "DELETE",
+            "CREATE TABLE",
+            "ALTER TABLE",
+            "DROP TABLE",
+            "TRUNCATE TABLE",
+            "CREATE INDEX",
+            "DROP INDEX",
+            "CREATE VIEW",
+            "ALTER VIEW",
+            "DROP VIEW",
+        ];
+
+        (
+            pos - hint.len(),
+            KEYWORDS
+                .iter()
+                .filter(|keyword| keyword.starts_with(&hint.to_ascii_uppercase()))
+                .map(|keyword| Pair {
+                    display: keyword.to_string(),
+                    replacement: keyword.to_string(),
+                })
+                .collect(),
+        )
+    }
+}

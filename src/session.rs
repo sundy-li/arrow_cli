@@ -4,12 +4,12 @@ use arrow::error::ArrowError;
 use arrow_cast::pretty::pretty_format_batches;
 use arrow_flight::sql::client::FlightSqlServiceClient;
 use arrow_flight::utils::flight_data_to_batches;
-use arrow_flight::{FlightClient, FlightData, FlightDescriptor};
+use arrow_flight::FlightData;
 use futures::TryStreamExt;
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::Editor;
-use tonic::transport::{Certificate, Endpoint};
+use tonic::transport::Endpoint;
 
 use crate::helper::CliHelper;
 
@@ -18,6 +18,8 @@ pub struct Session {
 }
 
 const DEFAULT_PROMPT: &str = "arrow_cli :) ";
+const HISTORY_PATH: &str = "~/.arrow_history";
+
 impl Session {
     pub async fn try_new(url: &str, user: &str, password: &str) -> Result<Self, ArrowError> {
         let endpoint = endpoint(String::from(url))?;
@@ -26,8 +28,7 @@ impl Session {
             .await
             .map_err(|err| ArrowError::IoError(err.to_string()))?;
         let mut client = FlightSqlServiceClient::new(channel);
-        let token = client.handshake(user, password).await.unwrap();
-        println!("got {:?}", token);
+        let _token = client.handshake(user, password).await.unwrap();
 
         Ok(Self { client })
     }
@@ -36,7 +37,7 @@ impl Session {
         let mut query = "".to_owned();
         let mut rl = Editor::<CliHelper, DefaultHistory>::new().unwrap();
         rl.set_helper(Some(CliHelper::new()));
-        rl.load_history(".history").ok();
+        rl.load_history(HISTORY_PATH).ok();
 
         loop {
             match rl.readline(DEFAULT_PROMPT) {
@@ -45,12 +46,7 @@ impl Session {
                 }
                 Ok(line) => {
                     let line = line.trim_end();
-                    if line.ends_with('\\') {
-                        query.push_str(line[..line.len() - 1].trim_end());
-                        continue;
-                    } else {
-                        query.push_str(line);
-                    }
+                    query.push_str(&line.replace("\\\n", ""));
                 }
                 Err(e) => match e {
                     ReadlineError::Io(err) => {
@@ -66,35 +62,45 @@ impl Session {
                 },
             }
             if !query.is_empty() {
+                let _ = rl.add_history_entry(query.trim_end());
                 match self.handle_query(&query).await {
                     Ok(true) => {
                         break;
                     }
                     Ok(false) => {}
                     Err(e) => {
-                        println!("handle_query err: {e}");
+                        eprintln!("handle_query err: {e}");
                     }
                 }
             }
             query.clear();
         }
+
         println!("Bye");
+        let _ = rl.save_history(HISTORY_PATH);
     }
 
-    async fn handle_query(&mut self, query: &str) -> Result<bool, String> {
+    async fn handle_query(&mut self, query: &str) -> Result<bool, ArrowError> {
         if query == "exit" || query == "quit" {
             return Ok(true);
         }
 
-        let mut stmt = self.client.prepare(query.to_string()).await.unwrap();
-        let flight_info = stmt.execute().await.unwrap();
-        let ticket = flight_info.endpoint[0].ticket.as_ref().unwrap().clone();
-        let flight_data = self.client.do_get(ticket).await.unwrap();
+        println!("\n{}\n", query);
+
+        let mut stmt = self.client.prepare(query.to_string()).await?;
+        let flight_info = stmt.execute().await?;
+        let ticket = flight_info.endpoint[0]
+            .ticket
+            .as_ref()
+            .ok_or_else(|| ArrowError::IoError("Ticket is emtpy".to_string()))?;
+
+        let flight_data = self.client.do_get(ticket.clone()).await?;
         let flight_data: Vec<FlightData> = flight_data.try_collect().await.unwrap();
 
-        let batches = flight_data_to_batches(&flight_data).unwrap();
+        let batches = flight_data_to_batches(&flight_data)?;
 
-        let res = pretty_format_batches(batches.as_slice()).unwrap();
+        let res = pretty_format_batches(batches.as_slice())?;
+
         println!("{res}");
         Ok(false)
     }
