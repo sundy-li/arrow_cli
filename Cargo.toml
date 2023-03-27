@@ -11,7 +11,7 @@ version = "0.0.1"
 
 [dependencies]
 shlex = "1.1.0"
-isatty = "0.1.9"
+isatty = "0.2.0"
 rustyline = "11.0.0"
 arrow-flight = { version = "35.0.0", features = ["flight-sql-experimental"] }
 arrow = "35.0.0"
