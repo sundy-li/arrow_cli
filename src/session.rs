@@ -1,6 +1,8 @@
 use std::time::Duration;
 
+use arrow::csv::WriterBuilder;
 use arrow::error::ArrowError;
+use arrow::record_batch::RecordBatch;
 use arrow_cast::pretty::pretty_format_batches;
 use arrow_flight::sql::client::FlightSqlServiceClient;
 use arrow_flight::utils::flight_data_to_batches;
@@ -9,6 +11,7 @@ use futures::TryStreamExt;
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::Editor;
+use std::io::BufRead;
 use tonic::transport::Endpoint;
 
 use crate::helper::CliHelper;
@@ -63,7 +66,7 @@ impl Session {
             }
             if !query.is_empty() {
                 let _ = rl.add_history_entry(query.trim_end());
-                match self.handle_query(&query).await {
+                match self.handle_query(true, &query).await {
                     Ok(true) => {
                         break;
                     }
@@ -80,12 +83,24 @@ impl Session {
         let _ = rl.save_history(HISTORY_PATH);
     }
 
-    async fn handle_query(&mut self, query: &str) -> Result<bool, ArrowError> {
-        if query == "exit" || query == "quit" {
-            return Ok(true);
+    pub async fn handle_stdin(&mut self) {
+        let mut lines = std::io::stdin().lock().lines();
+        // TODO support multi line
+        while let Some(Ok(line)) = lines.next() {
+            let line = line.trim_end();
+            if let Err(e) = self.handle_query(false, line).await {
+                eprintln!("handle_query err: {e}");
+            }
         }
+    }
 
-        println!("\n{}\n", query);
+    pub async fn handle_query(&mut self, is_repl: bool, query: &str) -> Result<bool, ArrowError> {
+        if is_repl {
+            if query == "exit" || query == "quit" {
+                return Ok(true);
+            }
+            println!("\n{}\n", query);
+        }
 
         let mut stmt = self.client.prepare(query.to_string()).await?;
         let flight_info = stmt.execute().await?;
@@ -98,10 +113,14 @@ impl Session {
         let flight_data: Vec<FlightData> = flight_data.try_collect().await.unwrap();
 
         let batches = flight_data_to_batches(&flight_data)?;
+        if is_repl {
+            let res = pretty_format_batches(batches.as_slice())?;
+            println!("{res}");
+        } else {
+            let res = print_batches_with_sep(batches.as_slice(), b'\t')?;
+            print!("{res}");
+        }
 
-        let res = pretty_format_batches(batches.as_slice())?;
-
-        println!("{res}");
         Ok(false)
     }
 }
@@ -118,4 +137,19 @@ fn endpoint(addr: String) -> Result<Endpoint, ArrowError> {
         .keep_alive_while_idle(true);
 
     Ok(endpoint)
+}
+
+fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<String, ArrowError> {
+    let mut bytes = vec![];
+    {
+        let builder = WriterBuilder::new()
+            .has_headers(false)
+            .with_delimiter(delimiter);
+        let mut writer = builder.build(&mut bytes);
+        for batch in batches {
+            writer.write(batch)?;
+        }
+    }
+    let formatted = String::from_utf8(bytes).map_err(|e| ArrowError::CsvError(e.to_string()))?;
+    Ok(formatted)
 }

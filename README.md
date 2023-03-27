@@ -13,7 +13,7 @@ arrow_cli is a CLI tool for interacting with server in Flight SQL protocol.
 
 ## Install 
 
-```
+```sh
 cargo install arrow_cli
 ```
 
@@ -26,7 +26,8 @@ Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT
 
 ## Examples
 
-```
+### REPL
+```sql
 ❯ arrow_cli -h arch -u sundy -p abc --port 8900
 arrow_cli :) select avg(number) from numbers(10);
 
@@ -47,6 +48,15 @@ show tables like 'c%';
 | customer          |
 +-------------------+
 arrow_cli :) 
+```
+
+### StdIn Pipe
+
+```bash
+❯ echo "select number from numbers(3)" | arrow_cli -h arch -u sundy -p abc --port 8900
+0
+1
+2
 ```
 
 ## Features

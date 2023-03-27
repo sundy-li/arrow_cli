@@ -49,6 +49,8 @@ pub async fn main() -> Result<(), ArrowError> {
 
     if stdin_isatty() {
         session.handle_repl().await;
+    } else {
+        session.handle_stdin().await;
     }
     Ok(())
 }
