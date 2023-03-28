@@ -1,10 +1,8 @@
-# arrow_cli &emsp; [![Build Status]][actions] [![Latest Version]][crates.io]
+# arrow_cli &emsp; 
 
-[Build Status]: https://img.shields.io/github/workflow/status/sundy-li/arrow_cli/CI/main
-[actions]: https://github.com/sundy-li/arrow_cli/actions?query=branch%3Amain
-[Latest Version]: https://img.shields.io/crates/v/arrow_cli.svg
-[crates.io]: https://crates.io/crates/arrow_cli
-
+[![Build Status](https://github.com/sundy-li/arrow_cli/actions/workflows/ci.yml/badge.svg)](https://github.com/sundy-li/arrow_cli/actions/workflows/ci.yml)
+[![](https://img.shields.io/crates/v/arrow_cli.svg)](https://crates.io/crates/arrow_cli)
+[![](https://img.shields.io/crates/d/arrow_cli.svg)](https://crates.io/crates/arrow_cli)
 
 
 ## Overview
