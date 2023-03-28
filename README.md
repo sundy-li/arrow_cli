@@ -27,7 +27,10 @@ Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT
 ### REPL
 ```sql
 ❯ arrow_cli -h arch -u sundy -p abc --port 8900
-arrow_cli :) select avg(number) from numbers(10);
+Welcome to Arrow CLI.
+Connecting to http://arch:8900/ as user sundy.
+
+arch :) select avg(number) from numbers(10);
 
 select avg(number) from numbers(10);
 
@@ -36,7 +39,10 @@ select avg(number) from numbers(10);
 +-------------+
 | 4.5         |
 +-------------+
-arrow_cli :) show tables like 'c%';
+
+1 rows in set (0.036 sec)
+
+arch :) show tables like 'c%';
 
 show tables like 'c%';
 
@@ -45,7 +51,11 @@ show tables like 'c%';
 +-------------------+
 | customer          |
 +-------------------+
-arrow_cli :) 
+
+1 rows in set (0.030 sec)
+
+arch :) exit
+Bye
 ```
 
 ### StdIn Pipe

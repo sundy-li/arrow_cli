@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use arrow::csv::WriterBuilder;
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
@@ -12,38 +10,61 @@ use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::Editor;
 use std::io::BufRead;
+use tokio::time::Instant;
 use tonic::transport::Endpoint;
 
 use crate::helper::CliHelper;
 
 pub struct Session {
     client: FlightSqlServiceClient,
+    is_repl: bool,
+    prompt: String,
 }
 
-const DEFAULT_PROMPT: &str = "arrow_cli :) ";
-const HISTORY_PATH: &str = "~/.arrow_history";
-
 impl Session {
-    pub async fn try_new(url: &str, user: &str, password: &str) -> Result<Self, ArrowError> {
-        let endpoint = endpoint(String::from(url))?;
+    pub async fn try_new(
+        endpoint: Endpoint,
+        user: &str,
+        password: &str,
+        is_repl: bool,
+    ) -> Result<Self, ArrowError> {
         let channel = endpoint
             .connect()
             .await
             .map_err(|err| ArrowError::IoError(err.to_string()))?;
+
+        if is_repl {
+            println!("Welcome to Arrow CLI.");
+            println!("Connecting to {} as user {}.", endpoint.uri(), user);
+            println!();
+        }
         let mut client = FlightSqlServiceClient::new(channel);
         let _token = client.handshake(user, password).await.unwrap();
 
-        Ok(Self { client })
+        let prompt = format!("{} :) ", endpoint.uri().host().unwrap());
+        Ok(Self {
+            client,
+            is_repl,
+            prompt,
+        })
+    }
+
+    pub async fn handle(&mut self) {
+        if self.is_repl {
+            self.handle_repl().await;
+        } else {
+            self.handle_stdin().await;
+        }
     }
 
     pub async fn handle_repl(&mut self) {
         let mut query = "".to_owned();
         let mut rl = Editor::<CliHelper, DefaultHistory>::new().unwrap();
         rl.set_helper(Some(CliHelper::new()));
-        rl.load_history(HISTORY_PATH).ok();
+        rl.load_history(&get_history_path()).ok();
 
         loop {
-            match rl.readline(DEFAULT_PROMPT) {
+            match rl.readline(&self.prompt) {
                 Ok(line) if line.starts_with("--") => {
                     continue;
                 }
@@ -80,7 +101,7 @@ impl Session {
         }
 
         println!("Bye");
-        let _ = rl.save_history(HISTORY_PATH);
+        let _ = rl.save_history(&get_history_path());
     }
 
     pub async fn handle_stdin(&mut self) {
@@ -102,6 +123,7 @@ impl Session {
             println!("\n{}\n", query);
         }
 
+        let start = Instant::now();
         let mut stmt = self.client.prepare(query.to_string()).await?;
         let flight_info = stmt.execute().await?;
         let ticket = flight_info.endpoint[0]
@@ -115,7 +137,17 @@ impl Session {
         let batches = flight_data_to_batches(&flight_data)?;
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
+
             println!("{res}");
+            println!();
+
+            let rows: usize = batches.iter().map(|b| b.num_rows()).sum();
+            println!(
+                "{} rows in set ({:.3} sec)",
+                rows,
+                start.elapsed().as_secs_f64()
+            );
+            println!();
         } else {
             let res = print_batches_with_sep(batches.as_slice(), b'\t')?;
             print!("{res}");
@@ -123,20 +155,6 @@ impl Session {
 
         Ok(false)
     }
-}
-
-fn endpoint(addr: String) -> Result<Endpoint, ArrowError> {
-    let endpoint = Endpoint::new(addr)
-        .map_err(|_| ArrowError::IoError("Cannot create endpoint".to_string()))?
-        .connect_timeout(Duration::from_secs(20))
-        .timeout(Duration::from_secs(20))
-        .tcp_nodelay(true) // Disable Nagle's Algorithm since we don't want packets to wait
-        .tcp_keepalive(Option::Some(Duration::from_secs(3600)))
-        .http2_keep_alive_interval(Duration::from_secs(300))
-        .keep_alive_timeout(Duration::from_secs(20))
-        .keep_alive_while_idle(true);
-
-    Ok(endpoint)
 }
 
 fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<String, ArrowError> {
@@ -152,4 +170,11 @@ fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<Stri
     }
     let formatted = String::from_utf8(bytes).map_err(|e| ArrowError::CsvError(e.to_string()))?;
     Ok(formatted)
+}
+
+fn get_history_path() -> String {
+    format!(
+        "{}/.arrow_history",
+        std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+    )
 }
