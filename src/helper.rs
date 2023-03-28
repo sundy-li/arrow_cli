@@ -18,12 +18,13 @@
 //! Helper that helps with interactive editing, including multi-line parsing and validation,
 //! and auto-completion for file name during creating external table.
 
+use std::borrow::Cow;
+
 use rustyline::completion::Completer;
 use rustyline::completion::FilenameCompleter;
 use rustyline::completion::Pair;
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
-use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::ValidationContext;
 use rustyline::validate::ValidationResult;
@@ -34,21 +35,43 @@ use rustyline::Result;
 
 pub struct CliHelper {
     completer: FilenameCompleter,
-    highlighter: MatchingBracketHighlighter,
 }
 
 impl CliHelper {
     pub fn new() -> Self {
         Self {
             completer: FilenameCompleter::new(),
-            highlighter: MatchingBracketHighlighter::new(),
         }
     }
 }
 
 impl Highlighter for CliHelper {
-    fn highlight<'l>(&self, line: &'l str, pos: usize) -> std::borrow::Cow<'l, str> {
-        self.highlighter.highlight(line, pos)
+    fn highlight<'l>(&self, line: &'l str, pos: usize) -> Cow<'l, str> {
+        let mut pos = pos;
+
+        let mut line = line.to_owned();
+        while pos > 0 {
+            match find_last_word(&line, pos) {
+                Span::Keyword(start, end) => {
+                    line.replace_range(
+                        start..end,
+                        &format!("\x1b[1;32m{}\x1b[0m", &line[start..end]),
+                    );
+                    pos = start;
+                }
+                Span::Literal(start, end) => {
+                    line.replace_range(
+                        start..end,
+                        &format!("\x1b[1;37m{}\x1b[0m", &line[start..end]),
+                    );
+                    pos = start;
+                }
+                Span::None(start, _) => {
+                    pos = start;
+                }
+            }
+        }
+        Cow::Owned(line)
     }
 
     fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
@@ -73,8 +96,54 @@ impl Highlighter for CliHelper {
         std::borrow::Cow::Borrowed(candidate)
     }
 
-    fn highlight_char(&self, line: &str, pos: usize) -> bool {
-        self.highlighter.highlight_char(line, pos)
+    fn highlight_char(&self, line: &str, _pos: usize) -> bool {
+        !line.is_empty()
+    }
+}
+
+enum Span {
+    Keyword(usize, usize),
+    Literal(usize, usize),
+    None(usize, usize),
+}
+
+fn find_last_word(line: &str, pos: usize) -> Span {
+    if line.is_empty() {
+        return Span::None(0, 0);
+    }
+    let mut pos = pos;
+    if pos >= line.len() {
+        pos = line.len();
+    }
+
+    while pos > 0 {
+        if line.as_bytes()[pos - 1].is_ascii_whitespace() {
+            pos -= 1;
+        } else {
+            break;
+        }
+    }
+
+    let end = pos;
+    while pos > 0 {
+        if !line.as_bytes()[pos - 1].is_ascii_whitespace() {
+            pos -= 1;
+        } else {
+            break;
+        }
+    }
+    let keyword = &line[pos..end];
+    if KEYWORDS
+        .split('\n')
+        .any(|s| s.eq_ignore_ascii_case(keyword))
+    {
+        Span::Keyword(pos, end)
+    } else if (keyword.starts_with('\'') && keyword.starts_with('"'))
+        || keyword.parse::<f64>().is_ok()
+    {
+        Span::Literal(pos, end)
+    } else {
+        Span::None(pos, end)
     }
 }
 
@@ -114,53 +183,22 @@ impl Helper for CliHelper {}
 
 struct KeyWordCompleter {}
 
+static KEYWORDS: &str = include_str!("keywords.txt");
+
 impl KeyWordCompleter {
     fn complete(s: &str, pos: usize) -> (usize, Vec<Pair>) {
         let hint = s.split(|p: char| p.is_whitespace()).last().unwrap_or(s);
-        const KEYWORDS: &[&str] = &[
-            "SELECT",
-            "FROM",
-            "TABLE",
-            "VIEW",
-            "INFORMATION",
-            "WHERE",
-            "GROUP BY",
-            "HAVING",
-            "ORDER BY",
-            "LIMIT",
-            "OFFSET",
-            "JOIN",
-            "INNER JOIN",
-            "OUTER JOIN",
-            "LEFT JOIN",
-            "RIGHT JOIN",
-            "CROSS JOIN",
-            "UNION",
-            "UNION ALL",
-            "INSERT INTO",
-            "UPDATE",
-            "DELETE",
-            "CREATE TABLE",
-            "ALTER TABLE",
-            "DROP TABLE",
-            "TRUNCATE TABLE",
-            "CREATE INDEX",
-            "DROP INDEX",
-            "CREATE VIEW",
-            "ALTER VIEW",
-            "DROP VIEW",
-        ];
-
-        (
+        let res: (usize, Vec<Pair>) = (
             pos - hint.len(),
             KEYWORDS
-                .iter()
+                .split('\n')
                 .filter(|keyword| keyword.starts_with(&hint.to_ascii_uppercase()))
                 .map(|keyword| Pair {
                     display: keyword.to_string(),
                     replacement: keyword.to_string(),
                 })
                 .collect(),
-        )
+        );
+        res
     }
 }

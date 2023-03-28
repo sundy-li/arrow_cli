@@ -69,7 +69,7 @@ Bye
 
 ## Features
 
-- basic highlight
+- basic keywords highlight
 - basic auto-completion
 - select query support
 - TBD
