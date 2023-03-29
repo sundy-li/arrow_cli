@@ -13,7 +13,7 @@ version = "0.0.4"
 shlex = "1.1.0"
 isatty = "0.1.9"
 rustyline = "11.0.0"
-arrow-flight = { version = "35.0.0", features = ["flight-sql-experimental"] }
+arrow-flight = { version = "36.0.0", features = ["flight-sql-experimental"] }
 arrow = "35.0.0"
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 arrow-cast = { version = "35.0.0", features = ["prettyprint"] }
