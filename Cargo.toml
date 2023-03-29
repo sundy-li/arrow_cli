@@ -16,7 +16,7 @@ rustyline = "11.0.0"
 arrow-flight = { version = "35.0.0", features = ["flight-sql-experimental"] }
 arrow = "35.0.0"
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
-arrow-cast = { version = "35.0.0", features = ["prettyprint"] }
+arrow-cast = { version = "36.0.0", features = ["prettyprint"] }
 tokio = { version = "1.26", features = [
 	"macros",
 	"rt",
