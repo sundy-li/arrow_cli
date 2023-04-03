@@ -25,7 +25,7 @@ tokio = { version = "1.26", features = [
 	"parking_lot",
 ] }
 
-tonic = { version = "0.8", default-features = false, features = [
+tonic = { version = "0.9", default-features = false, features = [
 	"transport",
 	"codegen",
 	"tls",
