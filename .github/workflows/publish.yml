@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: crates.io
-      url: https://crates.io/crates/databend-driver
+      url: https://crates.io/crates/arrow_cli
     steps:
     - uses: actions/checkout@v4
     - name: Setup Rust toolchain
-      uses: ./.github/actions/setup
+      uses: ./.github/actions/check
       with:
         cache-key: publish
     - name: Setup Cargo Release
