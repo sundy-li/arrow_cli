@@ -7,7 +7,7 @@ repository = "https://github.com/sundy-li/arrow_cli"
 edition = "2021"
 license = "Apache-2.0"
 name = "arrow_cli"
-version = "0.1.0"
+version = "0.1.1"
 
 
 
@@ -17,7 +17,7 @@ atty = "0.2"
 rustyline = "11.0.0"
 arrow-cast = { version = "51", features = ["prettyprint"] }
 arrow-flight = { version = "51", features = ["flight-sql-experimental"] }
-arrow = "51"
+arrow = { version = "51", features = ["ipc_compression"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 tokio = { version = "1.26", features = [
 	"macros",
