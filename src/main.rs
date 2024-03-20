@@ -4,8 +4,7 @@ mod session;
 use std::time::Duration;
 
 use arrow::error::ArrowError;
-
-use isatty::stdin_isatty;
+use atty::Stream;
 
 use clap::Parser;
 use tonic::transport::{ClientTlsConfig, Endpoint};
@@ -53,7 +52,7 @@ pub async fn main() -> Result<(), ArrowError> {
     // Authenticate
     let url = format!("{protocol}://{}:{}", args.host, args.port);
     let endpoint = endpoint(&args, url)?;
-    let is_repl = stdin_isatty();
+    let is_repl = atty::is(Stream::Stdin);
     let mut session =
         session::Session::try_new(endpoint, &args.user, &args.password, is_repl).await?;
 
