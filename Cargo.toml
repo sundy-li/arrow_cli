@@ -13,7 +13,7 @@ version = "0.1.0"
 
 [dependencies]
 shlex = "1.1.0"
-isatty = "0.1.9"
+atty = "0.2"
 rustyline = "11.0.0"
 arrow-cast = { version = "51", features = ["prettyprint"] }
 arrow-flight = { version = "51", features = ["flight-sql-experimental"] }
