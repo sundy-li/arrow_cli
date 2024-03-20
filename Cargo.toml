@@ -9,6 +9,8 @@ license = "Apache-2.0"
 name = "arrow_cli"
 version = "0.1.0"
 
+
+
 [dependencies]
 shlex = "1.1.0"
 isatty = "0.1.9"
