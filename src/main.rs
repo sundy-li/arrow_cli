@@ -69,7 +69,7 @@ fn print_usage() {
 
 fn endpoint(args: &Args, addr: String) -> Result<Endpoint, ArrowError> {
     let mut endpoint = Endpoint::new(addr)
-        .map_err(|_| ArrowError::IoError("Cannot create endpoint".to_string()))?
+        .map_err(|_| ArrowError::IpcError("Cannot create endpoint".to_string()))?
         .connect_timeout(Duration::from_secs(20))
         .timeout(Duration::from_secs(20))
         .tcp_nodelay(true) // Disable Nagle's Algorithm since we don't want packets to wait
@@ -82,7 +82,7 @@ fn endpoint(args: &Args, addr: String) -> Result<Endpoint, ArrowError> {
         let tls_config = ClientTlsConfig::new();
         endpoint = endpoint
             .tls_config(tls_config)
-            .map_err(|_| ArrowError::IoError("Cannot create TLS endpoint".to_string()))?;
+            .map_err(|_| ArrowError::IpcError("Cannot create TLS endpoint".to_string()))?;
     }
 
     Ok(endpoint)

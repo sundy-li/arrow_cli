@@ -3,20 +3,18 @@ use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
 use arrow_cast::pretty::pretty_format_batches;
 use arrow_flight::sql::client::FlightSqlServiceClient;
-use arrow_flight::utils::flight_data_to_batches;
-use arrow_flight::FlightData;
 use futures::TryStreamExt;
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::Editor;
 use std::io::BufRead;
 use tokio::time::Instant;
-use tonic::transport::Endpoint;
+use tonic::transport::{Channel, Endpoint};
 
 use crate::helper::CliHelper;
 
 pub struct Session {
-    client: FlightSqlServiceClient,
+    client: FlightSqlServiceClient<Channel>,
     is_repl: bool,
     prompt: String,
 }
@@ -31,7 +29,7 @@ impl Session {
         let channel = endpoint
             .connect()
             .await
-            .map_err(|err| ArrowError::IoError(err.to_string()))?;
+            .map_err(|err| ArrowError::IpcError(err.to_string()))?;
 
         if is_repl {
             println!("Welcome to Arrow CLI.");
@@ -124,17 +122,15 @@ impl Session {
         }
 
         let start = Instant::now();
-        let mut stmt = self.client.prepare(query.to_string()).await?;
+        let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
         let ticket = flight_info.endpoint[0]
             .ticket
             .as_ref()
-            .ok_or_else(|| ArrowError::IoError("Ticket is emtpy".to_string()))?;
+            .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?;
 
         let flight_data = self.client.do_get(ticket.clone()).await?;
-        let flight_data: Vec<FlightData> = flight_data.try_collect().await.unwrap();
-
-        let batches = flight_data_to_batches(&flight_data)?;
+        let batches: Vec<RecordBatch> = flight_data.try_collect().await.unwrap();
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
 
@@ -161,7 +157,7 @@ fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<Stri
     let mut bytes = vec![];
     {
         let builder = WriterBuilder::new()
-            .has_headers(false)
+            .with_header(false)
             .with_delimiter(delimiter);
         let mut writer = builder.build(&mut bytes);
         for batch in batches {
