@@ -124,13 +124,16 @@ impl Session {
         let start = Instant::now();
         let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
-        let ticket = flight_info.endpoint[0]
-            .ticket
-            .as_ref()
-            .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?;
-
-        let flight_data = self.client.do_get(ticket.clone()).await?;
-        let batches: Vec<RecordBatch> = flight_data.try_collect().await.unwrap();
+        let mut batches: Vec<RecordBatch> = Vec::new();
+        for endpoint in flight_info.endpoint {
+            let ticket = endpoint
+                .ticket
+                .as_ref()
+                .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?;
+            let flight_data = self.client.do_get(ticket.clone()).await?;
+            let result: Vec<RecordBatch> = flight_data.try_collect().await.unwrap();
+            batches.extend(result);
+        }
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
 
