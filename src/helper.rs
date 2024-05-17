@@ -66,7 +66,7 @@ impl Highlighter for CliHelper {
                     );
                     pos = start;
                 }
-                Span::None(start, _) => {
+                Span::None(start) => {
                     pos = start;
                 }
             }
@@ -104,12 +104,12 @@ impl Highlighter for CliHelper {
 enum Span {
     Keyword(usize, usize),
     Literal(usize, usize),
-    None(usize, usize),
+    None(usize),
 }
 
 fn find_last_word(line: &str, pos: usize) -> Span {
     if line.is_empty() {
-        return Span::None(0, 0);
+        return Span::None(0);
     }
     let mut pos = pos;
     if pos >= line.len() {
@@ -143,7 +143,7 @@ fn find_last_word(line: &str, pos: usize) -> Span {
     {
         Span::Literal(pos, end)
     } else {
-        Span::None(pos, end)
+        Span::None(pos)
     }
 }
 
