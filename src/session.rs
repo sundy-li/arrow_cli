@@ -115,7 +115,7 @@ impl Session {
 
     pub async fn handle_query(&mut self, is_repl: bool, query: &str) -> Result<bool, ArrowError> {
         if is_repl {
-            if query == "exit" || query == "quit" {
+            if query == "exit" || query == "quit" || query == r#"\q"# {
                 return Ok(true);
             }
             println!("\n{}\n", query);
@@ -125,15 +125,29 @@ impl Session {
         let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
         let mut batches: Vec<RecordBatch> = Vec::new();
+
+        let mut handles = Vec::with_capacity(flight_info.endpoint.len());
         for endpoint in flight_info.endpoint {
             let ticket = endpoint
                 .ticket
                 .as_ref()
-                .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?;
-            let flight_data = self.client.do_get(ticket.clone()).await?;
-            let result: Vec<RecordBatch> = flight_data.try_collect().await.unwrap();
-            batches.extend(result);
+                .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?
+                .clone();
+            let mut client = self.client.clone();
+            handles.push(tokio::spawn(async move {
+                let flight_data = client.do_get(ticket).await?;
+                let result: Vec<RecordBatch> = flight_data
+                    .try_collect()
+                    .await
+                    .map_err(|e| ArrowError::IpcError(format!("Flight error: {e}")))?;
+                Ok::<Vec<RecordBatch>, ArrowError>(result)
+            }));
         }
+
+        for handle in handles {
+            batches.extend(handle.await.unwrap()?);
+        }
+
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
 
