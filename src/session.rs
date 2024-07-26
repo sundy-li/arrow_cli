@@ -136,10 +136,9 @@ impl Session {
             let mut client = self.client.clone();
             handles.push(tokio::spawn(async move {
                 let flight_data = client.do_get(ticket).await?;
-                let result: Vec<RecordBatch> = flight_data
-                    .try_collect()
-                    .await
-                    .map_err(|e| ArrowError::IpcError(format!("Flight error: {e}")))?;
+                let result: Vec<RecordBatch> = flight_data.try_collect().await.map_err(|e| {
+                    ArrowError::IpcError(format!("Failed to collect record batches: {e}"))
+                })?;
                 Ok::<Vec<RecordBatch>, ArrowError>(result)
             }));
         }
