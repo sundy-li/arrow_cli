@@ -125,7 +125,7 @@ impl Session {
         let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
         let mut batches: Vec<RecordBatch> = Vec::new();
-        
+
         let mut handles = Vec::with_capacity(flight_info.endpoint.len());
         for endpoint in flight_info.endpoint {
             let ticket = endpoint
