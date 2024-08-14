@@ -70,7 +70,7 @@ fn endpoint(args: &Args, addr: String) -> Result<Endpoint, ArrowError> {
     let mut endpoint = Endpoint::new(addr)
         .map_err(|_| ArrowError::IpcError("Cannot create endpoint".to_string()))?
         .connect_timeout(Duration::from_secs(20))
-        .timeout(Duration::from_secs(20))
+        .timeout(Duration::from_secs(180))
         .tcp_nodelay(true) // Disable Nagle's Algorithm since we don't want packets to wait
         .tcp_keepalive(Option::Some(Duration::from_secs(3600)))
         .http2_keep_alive_interval(Duration::from_secs(300))
