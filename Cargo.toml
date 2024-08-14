@@ -7,7 +7,7 @@ repository = "https://github.com/sundy-li/arrow_cli"
 edition = "2021"
 license = "Apache-2.0"
 name = "arrow_cli"
-version = "0.1.2"
+version = "0.1.3"
 
 
 
