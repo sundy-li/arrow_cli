@@ -38,6 +38,9 @@ struct Args {
 
     #[clap(long, help = "Print help information")]
     help: bool,
+
+    #[clap(long, default_value = "180", help = "Request timeout in seconds")]
+    timeout: u64,
 }
 
 #[tokio::main]
@@ -61,8 +64,7 @@ pub async fn main() -> Result<(), ArrowError> {
 }
 
 fn print_usage() {
-    let msg =
-        r#"Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT>>"#;
+    let msg = r#"Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT>|--timeout <TIME>>"#;
     println!("{}", msg);
 }
 
@@ -70,9 +72,9 @@ fn endpoint(args: &Args, addr: String) -> Result<Endpoint, ArrowError> {
     let mut endpoint = Endpoint::new(addr)
         .map_err(|_| ArrowError::IpcError("Cannot create endpoint".to_string()))?
         .connect_timeout(Duration::from_secs(20))
-        .timeout(Duration::from_secs(180))
+        .timeout(Duration::from_secs(args.timeout))
         .tcp_nodelay(true) // Disable Nagle's Algorithm since we don't want packets to wait
-        .tcp_keepalive(Option::Some(Duration::from_secs(3600)))
+        .tcp_keepalive(Some(Duration::from_secs(3600)))
         .http2_keep_alive_interval(Duration::from_secs(300))
         .keep_alive_timeout(Duration::from_secs(20))
         .keep_alive_while_idle(true);
