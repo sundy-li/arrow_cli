@@ -187,7 +187,10 @@ static KEYWORDS: &str = include_str!("keywords.txt");
 
 impl KeyWordCompleter {
     fn complete(s: &str, pos: usize) -> (usize, Vec<Pair>) {
-        let hint = s.split(|p: char| p.is_whitespace()).last().unwrap_or(s);
+        let hint = s
+            .split(|p: char| p.is_whitespace())
+            .next_back()
+            .unwrap_or(s);
         let res: (usize, Vec<Pair>) = (
             pos - hint.len(),
             KEYWORDS
