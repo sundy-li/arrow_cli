@@ -20,18 +20,18 @@
 
 use std::borrow::Cow;
 
+use rustyline::Context;
+use rustyline::Helper;
+use rustyline::Result;
 use rustyline::completion::Completer;
 use rustyline::completion::FilenameCompleter;
 use rustyline::completion::Pair;
 use rustyline::error::ReadlineError;
-use rustyline::highlight::Highlighter;
+use rustyline::highlight::{CmdKind, Highlighter};
 use rustyline::hint::Hinter;
 use rustyline::validate::ValidationContext;
 use rustyline::validate::ValidationResult;
 use rustyline::validate::Validator;
-use rustyline::Context;
-use rustyline::Helper;
-use rustyline::Result;
 
 pub struct CliHelper {
     completer: FilenameCompleter,
@@ -78,25 +78,25 @@ impl Highlighter for CliHelper {
         &'s self,
         prompt: &'p str,
         default: bool,
-    ) -> std::borrow::Cow<'b, str> {
+    ) -> Cow<'b, str> {
         let _ = default;
-        std::borrow::Cow::Borrowed(prompt)
+        Cow::Borrowed(prompt)
     }
 
     fn highlight_hint<'h>(&self, hint: &'h str) -> std::borrow::Cow<'h, str> {
-        std::borrow::Cow::Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
+        Cow::Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
     }
 
     fn highlight_candidate<'c>(
         &self,
         candidate: &'c str, // FIXME should be Completer::Candidate
         completion: rustyline::CompletionType,
-    ) -> std::borrow::Cow<'c, str> {
+    ) -> Cow<'c, str> {
         let _ = completion;
-        std::borrow::Cow::Borrowed(candidate)
+        Cow::Borrowed(candidate)
     }
 
-    fn highlight_char(&self, line: &str, _pos: usize) -> bool {
+    fn highlight_char(&self, line: &str, _pos: usize, _kind: CmdKind) -> bool {
         !line.is_empty()
     }
 }
