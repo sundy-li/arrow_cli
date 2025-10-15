@@ -124,6 +124,7 @@ impl Session {
         let start = Instant::now();
         let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
+        let sql_exec_duration = start.elapsed();
         let mut batches: Vec<RecordBatch> = Vec::new();
 
         let mut handles = Vec::with_capacity(flight_info.endpoint.len());
@@ -157,7 +158,7 @@ impl Session {
             println!(
                 "{} rows in set ({:.3} sec)",
                 rows,
-                start.elapsed().as_secs_f64()
+                sql_exec_duration.as_secs_f64()
             );
             println!();
         } else {
