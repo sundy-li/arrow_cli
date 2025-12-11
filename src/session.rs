@@ -2,7 +2,9 @@ use arrow::csv::WriterBuilder;
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
 use arrow_cast::pretty::pretty_format_batches;
-use arrow_flight::sql::client::FlightSqlServiceClient;
+use arrow_flight::{
+    flight_service_client::FlightServiceClient, sql::client::FlightSqlServiceClient,
+};
 use futures::TryStreamExt;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
@@ -36,7 +38,10 @@ impl Session {
             println!("Connecting to {} as user {}.", endpoint.uri(), user);
             println!();
         }
-        let mut client = FlightSqlServiceClient::new(channel);
+
+        let mut client = FlightSqlServiceClient::new_from_inner(
+            FlightServiceClient::new(channel).max_decoding_message_size(usize::MAX),
+        );
         let _token = client.handshake(user, password).await?;
 
         let prompt = format!("{} :) ", endpoint.uri().host().unwrap());
