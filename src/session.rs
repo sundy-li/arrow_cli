@@ -32,12 +32,12 @@ impl Session {
             .map_err(|err| ArrowError::IpcError(err.to_string()))?;
 
         if is_repl {
-            println!("Welcome to Arrow CLI.");
+            println!("Welcome to Arrow CLI v{}.", env!("CARGO_PKG_VERSION"));
             println!("Connecting to {} as user {}.", endpoint.uri(), user);
             println!();
         }
         let mut client = FlightSqlServiceClient::new(channel);
-        let _token = client.handshake(user, password).await.unwrap();
+        let _token = client.handshake(user, password).await?;
 
         let prompt = format!("{} :) ", endpoint.uri().host().unwrap());
         Ok(Self {
@@ -124,7 +124,7 @@ impl Session {
         let start = Instant::now();
         let mut stmt = self.client.prepare(query.to_string(), None).await?;
         let flight_info = stmt.execute().await?;
-        let sql_exec_duration = start.elapsed();
+        let ticket_recv_duration = start.elapsed();
         let mut batches: Vec<RecordBatch> = Vec::new();
 
         let mut handles = Vec::with_capacity(flight_info.endpoint.len());
@@ -147,6 +147,7 @@ impl Session {
         for handle in handles {
             batches.extend(handle.await.unwrap()?);
         }
+        let data_recv_duration = start.elapsed();
 
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
@@ -156,9 +157,10 @@ impl Session {
 
             let rows: usize = batches.iter().map(|b| b.num_rows()).sum();
             println!(
-                "{} rows in set ({:.3} sec)",
+                "{} rows in set (tickets received in {:.3} sec, data received in {:.3} sec)",
                 rows,
-                sql_exec_duration.as_secs_f64()
+                ticket_recv_duration.as_secs_f64(),
+                data_recv_duration.as_secs_f64(),
             );
             println!();
         } else {
