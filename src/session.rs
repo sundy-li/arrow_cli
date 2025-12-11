@@ -147,7 +147,7 @@ impl Session {
         for handle in handles {
             batches.extend(handle.await.unwrap()?);
         }
-        let data_recv_duration = start.elapsed();
+        let rows_recv_duration = start.elapsed();
 
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
@@ -157,10 +157,10 @@ impl Session {
 
             let rows: usize = batches.iter().map(|b| b.num_rows()).sum();
             println!(
-                "{} rows in set (tickets received in {:.3} sec, data received in {:.3} sec)",
+                "{} rows in set (tickets received in {:.3} sec, rows received in {:.3} sec)",
                 rows,
                 ticket_recv_duration.as_secs_f64(),
-                data_recv_duration.as_secs_f64(),
+                rows_recv_duration.as_secs_f64(),
             );
             println!();
         } else {
