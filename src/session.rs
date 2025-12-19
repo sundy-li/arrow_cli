@@ -19,6 +19,7 @@ pub struct Session {
     client: FlightSqlServiceClient<Channel>,
     is_repl: bool,
     prompt: String,
+    prepared: bool,
 }
 
 impl Session {
@@ -27,6 +28,7 @@ impl Session {
         user: &str,
         password: &str,
         is_repl: bool,
+        prepared: bool,
     ) -> Result<Self, ArrowError> {
         let channel = endpoint
             .connect()
@@ -49,6 +51,7 @@ impl Session {
             client,
             is_repl,
             prompt,
+            prepared,
         })
     }
 
@@ -127,8 +130,12 @@ impl Session {
         }
 
         let start = Instant::now();
-        let mut stmt = self.client.prepare(query.to_string(), None).await?;
-        let flight_info = stmt.execute().await?;
+        let flight_info = if self.prepared {
+            let mut stmt = self.client.prepare(query.to_string(), None).await?;
+            stmt.execute().await?
+        } else {
+            self.client.execute(query.to_string(), None).await?
+        };
         let ticket_recv_duration = start.elapsed();
         let mut batches: Vec<RecordBatch> = Vec::new();
 
