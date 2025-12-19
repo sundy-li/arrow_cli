@@ -10,7 +10,6 @@ use clap::Parser;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 
 #[derive(Debug, Parser, PartialEq)]
-#[command(disable_help_flag = true)]
 struct Args {
     #[clap(short = 'u', long, default_value = "root", help = "User name")]
     user: String,
@@ -18,12 +17,7 @@ struct Args {
     #[clap(short = 'p', long, default_value = "", help = "User password")]
     password: String,
 
-    #[clap(
-        short = 'h',
-        long,
-        default_value = "127.0.0.1",
-        help = "Flight SQL Server host"
-    )]
+    #[clap(long, default_value = "127.0.0.1", help = "Flight SQL Server host")]
     host: String,
     #[clap(
         short = 'P',
@@ -36,20 +30,20 @@ struct Args {
     #[clap(long)]
     tls: bool,
 
-    #[clap(long, help = "Print help information")]
-    help: bool,
-
     #[clap(long, default_value = "180", help = "Request timeout in seconds")]
     timeout: u64,
+
+    #[clap(
+        long,
+        default_value = "false",
+        help = "Execute query using prepared statement"
+    )]
+    prepared: bool,
 }
 
 #[tokio::main]
 pub async fn main() -> Result<(), ArrowError> {
     let args = Args::parse();
-    if args.help {
-        print_usage();
-        return Ok(());
-    }
 
     let protocol = if args.tls { "https" } else { "http" };
     // Authenticate
@@ -57,15 +51,11 @@ pub async fn main() -> Result<(), ArrowError> {
     let endpoint = endpoint(&args, url)?;
     let is_repl = atty::is(Stream::Stdin);
     let mut session =
-        session::Session::try_new(endpoint, &args.user, &args.password, is_repl).await?;
+        session::Session::try_new(endpoint, &args.user, &args.password, is_repl, args.prepared)
+            .await?;
 
     session.handle().await;
     Ok(())
-}
-
-fn print_usage() {
-    let msg = r#"Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT>|--timeout <TIME>>"#;
-    println!("{}", msg);
 }
 
 fn endpoint(args: &Args, addr: String) -> Result<Endpoint, ArrowError> {
