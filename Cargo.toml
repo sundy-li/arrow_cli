@@ -1,22 +1,25 @@
 [package]
 authors = ["sundy-li <sundyli@apache.org>>"]
 categories = ["command-line-utilities"]
-description = "Replace with description"
+description = "A command line tool for interacting with server in Flight SQL protocol"
 documentation = "https://docs.rs/arrow_cli"
 repository = "https://github.com/sundy-li/arrow_cli"
 edition = "2024"
 license = "Apache-2.0"
 name = "arrow_cli"
-version = "0.2.4"
+version = "0.3.0"
 
 
 [dependencies]
+arrow-array = "57"
+arrow-cast = { version = "57", features = ["prettyprint"] }
+arrow-csv = "57"
+arrow-flight = { version = "57", features = ["flight-sql-experimental"] }
+arrow-schema = "57"
 atty = "0.2"
-rustyline = "15"
-arrow-cast = { version = "55", features = ["prettyprint"] }
-arrow-flight = { version = "55", features = ["flight-sql-experimental"] }
-arrow = { version = "55", features = ["ipc_compression"] }
+clap = { version = "4.5", features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
+rustyline = "17"
 tokio = { version = "1", features = [
 	"macros",
 	"rt",
@@ -24,11 +27,7 @@ tokio = { version = "1", features = [
 	"sync",
 	"parking_lot",
 ] }
-
-tonic = { version = "0.12", default-features = false, features = [
-	"transport",
-	"codegen",
-	"tls",
-	"prost",
+tonic = { version = "0.14", default-features = false, features = [
+	"channel",
+	"tls-ring"
 ] }
-clap = { version = "4.5", features = ["derive"] }
