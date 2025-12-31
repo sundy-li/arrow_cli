@@ -132,7 +132,9 @@ impl Session {
         let start = Instant::now();
         let flight_info = if self.prepared {
             let mut stmt = self.client.prepare(query.to_string(), None).await?;
-            stmt.execute().await?
+            let info = stmt.execute().await?;
+            stmt.close().await?;
+            info
         } else {
             self.client.execute(query.to_string(), None).await?
         };
