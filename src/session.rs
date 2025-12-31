@@ -1,10 +1,10 @@
-use arrow::csv::WriterBuilder;
-use arrow::error::ArrowError;
-use arrow::record_batch::RecordBatch;
+use arrow_array::RecordBatch;
 use arrow_cast::pretty::pretty_format_batches;
+use arrow_csv::WriterBuilder;
 use arrow_flight::{
     flight_service_client::FlightServiceClient, sql::client::FlightSqlServiceClient,
 };
+use arrow_schema::ArrowError;
 use futures::TryStreamExt;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;

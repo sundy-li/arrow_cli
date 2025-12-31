@@ -3,7 +3,7 @@ mod session;
 
 use std::time::Duration;
 
-use arrow::error::ArrowError;
+use arrow_schema::ArrowError;
 use atty::Stream;
 
 use clap::Parser;

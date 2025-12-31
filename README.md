@@ -19,7 +19,17 @@ cargo install arrow_cli
 
 ```
 > arrow_cli --help
-Usage: arrow_cli <--user <USER>|--password <PASSWORD>|--host <HOST>|--port <PORT>>
+Usage: arrow_cli [OPTIONS]
+
+Options:
+  -u, --user <USER>          User name [default: root]
+  -p, --password <PASSWORD>  User password [default: ]
+      --host <HOST>          Flight SQL Server host [default: 127.0.0.1]
+  -P, --port <PORT>          Flight SQL Server port [default: 4100]
+      --tls
+      --timeout <TIMEOUT>    Request timeout in seconds [default: 180]
+      --prepared             Execute query using prepared statement
+  -h, --help                 Print help
 ```
 
 ## Examples
