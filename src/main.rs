@@ -39,6 +39,9 @@ struct Args {
         help = "Execute query using prepared statement"
     )]
     prepared: bool,
+
+    #[clap(long, default_value = "false", help = "Print resultset schema")]
+    print_schema: bool,
 }
 
 #[tokio::main]
@@ -50,9 +53,7 @@ pub async fn main() -> Result<(), ArrowError> {
     let url = format!("{protocol}://{}:{}", args.host, args.port);
     let endpoint = endpoint(&args, url)?;
     let is_repl = atty::is(Stream::Stdin);
-    let mut session =
-        session::Session::try_new(endpoint, &args.user, &args.password, is_repl, args.prepared)
-            .await?;
+    let mut session = session::Session::try_new(endpoint, is_repl, args).await?;
 
     session.handle().await;
     Ok(())
