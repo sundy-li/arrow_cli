@@ -13,22 +13,20 @@ use std::io::BufRead;
 use tokio::time::Instant;
 use tonic::transport::{Channel, Endpoint};
 
-use crate::helper::CliHelper;
+use crate::{Args, helper::CliHelper};
 
 pub struct Session {
     client: FlightSqlServiceClient<Channel>,
     is_repl: bool,
     prompt: String,
-    prepared: bool,
+    args: Args,
 }
 
 impl Session {
     pub async fn try_new(
         endpoint: Endpoint,
-        user: &str,
-        password: &str,
         is_repl: bool,
-        prepared: bool,
+        args: Args,
     ) -> Result<Self, ArrowError> {
         let channel = endpoint
             .connect()
@@ -37,21 +35,21 @@ impl Session {
 
         if is_repl {
             println!("Welcome to Arrow CLI v{}.", env!("CARGO_PKG_VERSION"));
-            println!("Connecting to {} as user {}.", endpoint.uri(), user);
+            println!("Connecting to {} as user {}.", endpoint.uri(), args.user);
             println!();
         }
 
         let mut client = FlightSqlServiceClient::new_from_inner(
             FlightServiceClient::new(channel).max_decoding_message_size(usize::MAX),
         );
-        let _token = client.handshake(user, password).await?;
+        let _token = client.handshake(&args.user, &args.password).await?;
 
         let prompt = format!("{} :) ", endpoint.uri().host().unwrap());
         Ok(Self {
             client,
             is_repl,
             prompt,
-            prepared,
+            args,
         })
     }
 
@@ -130,7 +128,7 @@ impl Session {
         }
 
         let start = Instant::now();
-        let flight_info = if self.prepared {
+        let flight_info = if self.args.prepared {
             let mut stmt = self.client.prepare(query.to_string(), None).await?;
             let info = stmt.execute().await?;
             stmt.close().await?;
@@ -142,7 +140,7 @@ impl Session {
         let mut batches: Vec<RecordBatch> = Vec::new();
 
         let mut handles = Vec::with_capacity(flight_info.endpoint.len());
-        for endpoint in flight_info.endpoint {
+        for endpoint in flight_info.endpoint.iter() {
             let ticket = endpoint
                 .ticket
                 .as_ref()
@@ -166,17 +164,20 @@ impl Session {
         if is_repl {
             let res = pretty_format_batches(batches.as_slice())?;
 
-            println!("{res}");
-            println!();
+            println!("{res}\n");
+
+            if self.args.print_schema {
+                let schema = flight_info.try_decode_schema()?;
+                println!("{schema:#?}\n");
+            }
 
             let rows: usize = batches.iter().map(|b| b.num_rows()).sum();
             println!(
-                "{} rows in set (tickets received in {:.3} sec, rows received in {:.3} sec)",
+                "{} rows in set (tickets received in {:.3} sec, rows received in {:.3} sec)\n",
                 rows,
                 ticket_recv_duration.as_secs_f64(),
                 rows_recv_duration.as_secs_f64(),
             );
-            println!();
         } else {
             let res = print_batches_with_sep(batches.as_slice(), b'\t')?;
             print!("{res}");
