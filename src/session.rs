@@ -262,6 +262,8 @@ fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<(), 
 fn get_history_path() -> String {
     format!(
         "{}/.arrow_history",
-        std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+        std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string())
     )
 }
