@@ -140,7 +140,12 @@ impl Session {
         }
         let rows_recv_duration = start.elapsed();
 
-        Ok((batches, ticket_recv_duration, rows_recv_duration, flight_info))
+        Ok((
+            batches,
+            ticket_recv_duration,
+            rows_recv_duration,
+            flight_info,
+        ))
     }
 
     pub async fn handle_repl(&mut self) {
