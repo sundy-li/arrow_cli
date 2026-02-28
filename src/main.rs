@@ -42,6 +42,9 @@ struct Args {
 
     #[clap(long, default_value = "false", help = "Print resultset schema")]
     print_schema: bool,
+
+    #[clap(short = 'c', long, help = "Execute SQL command and exit")]
+    command: Option<String>,
 }
 
 #[tokio::main]
@@ -52,7 +55,7 @@ pub async fn main() -> Result<(), ArrowError> {
     // Authenticate
     let url = format!("{protocol}://{}:{}", args.host, args.port);
     let endpoint = endpoint(&args, url)?;
-    let is_repl = atty::is(Stream::Stdin);
+    let is_repl = atty::is(Stream::Stdin) && args.command.is_none();
     let mut session = session::Session::try_new(endpoint, is_repl, args).await?;
 
     session.handle().await;
