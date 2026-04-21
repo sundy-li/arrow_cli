@@ -1,4 +1,5 @@
 mod helper;
+mod output;
 mod session;
 
 use std::time::Duration;
@@ -7,6 +8,7 @@ use arrow_schema::ArrowError;
 use atty::Stream;
 
 use clap::Parser;
+use output::Output;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 
 #[derive(Debug, Parser, PartialEq)]
@@ -43,6 +45,14 @@ struct Args {
 
     #[clap(long, default_value = "false", help = "Print resultset schema")]
     print_schema: bool,
+
+    #[clap(
+        long,
+        value_enum,
+        default_value_t = Output::Table,
+        help = "Result output format"
+    )]
+    output: Output,
 
     #[clap(short = 'c', long, help = "Execute SQL command and exit")]
     command: Option<String>,

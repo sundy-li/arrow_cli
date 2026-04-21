@@ -1,6 +1,4 @@
 use arrow_array::RecordBatch;
-use arrow_cast::pretty::pretty_format_batches;
-use arrow_csv::WriterBuilder;
 use arrow_flight::{
     FlightInfo, flight_service_client::FlightServiceClient, sql::client::FlightSqlServiceClient,
 };
@@ -13,7 +11,11 @@ use std::{io::BufRead, time::Duration};
 use tokio::time::Instant;
 use tonic::transport::{Channel, Endpoint};
 
-use crate::{Args, helper::CliHelper};
+use crate::{
+    Args,
+    helper::CliHelper,
+    output::{self, Output},
+};
 
 pub struct Session {
     client: FlightSqlServiceClient<Channel>,
@@ -102,15 +104,8 @@ impl Session {
                 println!("\n{}\n", query);
 
                 if let Err(e) = async {
-                    let (batches, ticket_recv_duration, rows_recv_duration, flight_info) =
-                        self.execute_query(&query).await?;
-                    print_batches(
-                        &batches,
-                        ticket_recv_duration,
-                        rows_recv_duration,
-                        flight_info,
-                        &self.args,
-                    )?;
+                    let result = self.execute_query(&query).await?;
+                    print_query_result(&result, &self.args)?;
                     Ok::<_, ArrowError>(())
                 }
                 .await
@@ -127,16 +122,8 @@ impl Session {
 
     pub async fn handle_command(&mut self, command: &str) {
         if let Err(e) = async {
-            let (batches, ticket_recv_duration, rows_recv_duration, flight_info) =
-                self.execute_query(command).await?;
-
-            print_batches(
-                &batches,
-                ticket_recv_duration,
-                rows_recv_duration,
-                flight_info,
-                &self.args,
-            )?;
+            let result = self.execute_query(command).await?;
+            print_query_result(&result, &self.args)?;
             Ok::<_, ArrowError>(())
         }
         .await
@@ -151,8 +138,8 @@ impl Session {
         while let Some(Ok(line)) = lines.next() {
             let line = line.trim_end();
             if let Err(e) = async {
-                let (batches, _, _, _) = self.execute_query(line).await?;
-                print_batches_with_sep(batches.as_slice(), b'\t')?;
+                let result = self.execute_query(line).await?;
+                print_query_result(&result, &self.args)?;
                 Ok::<_, ArrowError>(())
             }
             .await
@@ -162,18 +149,7 @@ impl Session {
         }
     }
 
-    async fn execute_query(
-        &mut self,
-        query: &str,
-    ) -> Result<
-        (
-            Vec<RecordBatch>,
-            std::time::Duration,
-            std::time::Duration,
-            arrow_flight::FlightInfo,
-        ),
-        ArrowError,
-    > {
+    async fn execute_query(&mut self, query: &str) -> Result<QueryResult, ArrowError> {
         let start = Instant::now();
         let flight_info = if self.args.prepared {
             let mut stmt = self.client.prepare(query.to_string(), None).await?;
@@ -208,54 +184,40 @@ impl Session {
         }
         let rows_recv_duration = start.elapsed();
 
-        Ok((
+        Ok(QueryResult {
             batches,
             ticket_recv_duration,
             rows_recv_duration,
             flight_info,
-        ))
+        })
     }
 }
 
-fn print_batches(
-    batches: &[RecordBatch],
+struct QueryResult {
+    batches: Vec<RecordBatch>,
     ticket_recv_duration: Duration,
     rows_recv_duration: Duration,
     flight_info: FlightInfo,
-    args: &Args,
-) -> Result<(), ArrowError> {
-    let res = pretty_format_batches(batches)?;
+}
 
-    println!("{res}\n");
+fn print_query_result(result: &QueryResult, args: &Args) -> Result<(), ArrowError> {
+    output::print_batches(&result.batches, args.output)?;
 
     if args.print_schema {
-        let schema = flight_info.try_decode_schema()?;
+        let schema = result.flight_info.clone().try_decode_schema()?;
         println!("{schema:#?}\n");
     }
 
-    let rows: usize = batches.iter().map(|b| b.num_rows()).sum();
-    println!(
-        "{} rows in set (tickets received in {:.3} sec, rows received in {:.3} sec)\n",
-        rows,
-        ticket_recv_duration.as_secs_f64(),
-        rows_recv_duration.as_secs_f64(),
-    );
-    Ok(())
-}
-
-fn print_batches_with_sep(batches: &[RecordBatch], delimiter: u8) -> Result<(), ArrowError> {
-    let mut bytes = vec![];
-    {
-        let builder = WriterBuilder::new()
-            .with_header(false)
-            .with_delimiter(delimiter);
-        let mut writer = builder.build(&mut bytes);
-        for batch in batches {
-            writer.write(batch)?;
-        }
+    if args.output == Output::Table {
+        let rows: usize = result.batches.iter().map(|b| b.num_rows()).sum();
+        println!(
+            "{} rows in set (tickets received in {:.3} sec, rows received in {:.3} sec)\n",
+            rows,
+            result.ticket_recv_duration.as_secs_f64(),
+            result.rows_recv_duration.as_secs_f64(),
+        );
     }
-    let formatted = String::from_utf8(bytes).map_err(|e| ArrowError::CsvError(e.to_string()))?;
-    print!("{formatted}");
+
     Ok(())
 }
 

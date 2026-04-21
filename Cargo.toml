@@ -7,7 +7,7 @@ repository = "https://github.com/sundy-li/arrow_cli"
 edition = "2024"
 license = "Apache-2.0"
 name = "arrow_cli"
-version = "0.4.1"
+version = "0.5.0"
 
 
 [dependencies]
@@ -15,6 +15,7 @@ arrow-array = "57"
 arrow-cast = { version = "57", features = ["prettyprint"] }
 arrow-csv = "57"
 arrow-flight = { version = "57", features = ["flight-sql-experimental"] }
+arrow-json = "57"
 arrow-schema = "57"
 atty = "0.2"
 clap = { version = "4.5", features = ["derive"] }
