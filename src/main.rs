@@ -10,6 +10,7 @@ use clap::Parser;
 use tonic::transport::{ClientTlsConfig, Endpoint};
 
 #[derive(Debug, Parser, PartialEq)]
+#[command(version)]
 struct Args {
     #[clap(short = 'u', long, default_value = "root", help = "User name")]
     user: String,
