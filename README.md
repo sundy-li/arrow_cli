@@ -7,7 +7,7 @@
 
 ## Overview
 
-arrow_cli is a CLI tool for interacting with server in Flight SQL protocol.
+arrow_cli is a CLI tool for interacting with a server that speaks the Flight SQL protocol.
 
 ## Install 
 
@@ -17,7 +17,7 @@ cargo install arrow_cli
 
 ## Usage
 
-```
+```text
 > arrow_cli --help
 Usage: arrow_cli [OPTIONS]
 
@@ -29,52 +29,78 @@ Options:
       --tls
       --timeout <TIMEOUT>    Request timeout in seconds [default: 180]
       --prepared             Execute query using prepared statement
+      --print-schema         Print resultset schema
+      --output <OUTPUT>      Result output format [default: table] [possible values: table, json, csv, tsv, psv]
+  -c, --command <COMMAND>    Execute SQL command and exit
   -h, --help                 Print help
 ```
 
 ## Examples
 
-### REPL
-```sql
-❯ arrow_cli -h arch -u sundy -p abc --port 8900
-Welcome to Arrow CLI.
-Connecting to http://arch:8900/ as user sundy.
-
-arch :) select avg(number) from numbers(10);
-
-select avg(number) from numbers(10);
-
+### Single command with table output
+```bash
+❯ arrow_cli -h arch -u sundy -p abc --port 8900 --output table --command "select avg(number) from numbers(10);"
 +-------------+
 | avg(number) |
 +-------------+
 | 4.5         |
 +-------------+
 
-1 rows in set (0.036 sec)
-
-arch :) show tables like 'c%';
-
-show tables like 'c%';
-
-+-------------------+
-| tables_in_default |
-+-------------------+
-| customer          |
-+-------------------+
-
-1 rows in set (0.030 sec)
-
-arch :) exit
-Bye
+1 rows in set (tickets received in 0.036 sec, rows received in 0.036 sec)
 ```
 
-### StdIn Pipe
+### Single command with JSON output
 
 ```bash
-❯ echo "select number from numbers(3)" | arrow_cli -h arch -u sundy -p abc --port 8900
+❯ arrow_cli -h arch -u sundy -p abc --port 8900 --output json --command "select number from numbers(3)"
+{"number":0}
+{"number":1}
+{"number":2}
+```
+
+### StdIn pipe with CSV output
+
+```bash
+❯ echo "select number from numbers(3)" | arrow_cli -h arch -u sundy -p abc --port 8900 --output csv
 0
 1
 2
+```
+
+### StdIn pipe with TSV output
+
+```bash
+❯ echo "select number, concat('v', to_string(number)) from numbers(3)" | arrow_cli -h arch -u sundy -p abc --port 8900 --output tsv
+0	v0
+1	v1
+2	v2
+```
+
+### Single command with PSV output
+
+```bash
+❯ arrow_cli -h arch -u sundy -p abc --port 8900 --output psv --command "select number, concat('v', to_string(number)) from numbers(3)"
+0|v0
+1|v1
+2|v2
+```
+
+### Interactive session with JSON output
+
+```text
+❯ arrow_cli -h arch -u sundy -p abc --port 8900 --output json
+Welcome to Arrow CLI v0.4.1.
+Connecting to http://arch:8900/ as user sundy.
+
+arch :) select number from numbers(2);
+
+select number from numbers(2);
+
+{"number":0}
+{"number":1}
+
+arch :) exit
+Bye
 ```
 
 ## Features
@@ -82,6 +108,8 @@ Bye
 - basic keywords highlight
 - basic auto-completion
 - select query support
+- output formats: table, json, csv, tsv, psv
+- delimited formats use: csv=`,`, tsv=`\t`, psv=`|`
 - TBD
 
 #### License

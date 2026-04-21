@@ -45,16 +45,10 @@ Output:
 echo "select 1" | arrow_cli --host localhost --port 8900 --user admin --password abc
 ```
 
-Output:
-
-```text
-1
-```
-
 ### Option: print the result schema
 
 ```bash
-arrow_cli --host localhost --port 8900 --user admin --password abc --print-schema --command "select number from numbers(3);"
+arrow_cli --host localhost --port 8900 --user admin --password abc --print-schema --command "select 1"
 ```
 
 Output:
@@ -79,5 +73,12 @@ Schema {
 1 rows in set (tickets received in 0.008 sec, rows received in 0.010 sec)
 ```
 
-## Other notes
-- Run `arrow_cli --help` for more details
+### Option: output formats
+
+- `--output table`: pretty table output with row count and timing summary
+- `--output json`: line-delimited JSON rows
+- `--output csv`: comma-separated rows without headers
+- `--output tsv`: tab-separated rows without headers
+- `--output psv`: pipe-separated rows without headers
+
+Run `arrow_cli --help` for more usage details.
