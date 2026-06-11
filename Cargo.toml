@@ -11,12 +11,12 @@ version = "0.5.0"
 
 
 [dependencies]
-arrow-array = "57"
-arrow-cast = { version = "57", features = ["prettyprint"] }
-arrow-csv = "57"
-arrow-flight = { version = "57", features = ["flight-sql-experimental"] }
-arrow-json = "57"
-arrow-schema = "57"
+arrow-array = { version = "58", features = ["chrono-tz"] }
+arrow-cast = { version = "58", features = ["prettyprint"] }
+arrow-csv = "58"
+arrow-flight = { version = "58", features = ["flight-sql-experimental"] }
+arrow-json = "58"
+arrow-schema = "58"
 atty = "0.2"
 clap = { version = "4.5", features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }

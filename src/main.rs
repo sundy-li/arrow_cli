@@ -4,6 +4,7 @@ mod session;
 
 use std::time::Duration;
 
+use arrow_flight::error::FlightError;
 use arrow_schema::ArrowError;
 use atty::Stream;
 
@@ -59,7 +60,7 @@ struct Args {
 }
 
 #[tokio::main]
-pub async fn main() -> Result<(), ArrowError> {
+pub async fn main() -> Result<(), FlightError> {
     let args = Args::parse();
 
     let protocol = if args.tls { "https" } else { "http" };
