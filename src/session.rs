@@ -1,6 +1,7 @@
 use arrow_array::RecordBatch;
 use arrow_flight::{
-    FlightInfo, flight_service_client::FlightServiceClient, sql::client::FlightSqlServiceClient,
+    FlightInfo, error::FlightError, flight_service_client::FlightServiceClient,
+    sql::client::FlightSqlServiceClient,
 };
 use arrow_schema::ArrowError;
 use futures::TryStreamExt;
@@ -29,11 +30,11 @@ impl Session {
         endpoint: Endpoint,
         is_repl: bool,
         args: Args,
-    ) -> Result<Self, ArrowError> {
+    ) -> Result<Self, FlightError> {
         let channel = endpoint
             .connect()
             .await
-            .map_err(|err| ArrowError::IpcError(err.to_string()))?;
+            .map_err(|err| FlightError::ExternalError(Box::new(err)))?;
 
         if is_repl {
             println!("Welcome to Arrow CLI v{}.", env!("CARGO_PKG_VERSION"));
@@ -106,7 +107,7 @@ impl Session {
                 if let Err(e) = async {
                     let result = self.execute_query(&query).await?;
                     print_query_result(&result, &self.args)?;
-                    Ok::<_, ArrowError>(())
+                    Ok::<_, FlightError>(())
                 }
                 .await
                 {
@@ -124,7 +125,7 @@ impl Session {
         if let Err(e) = async {
             let result = self.execute_query(command).await?;
             print_query_result(&result, &self.args)?;
-            Ok::<_, ArrowError>(())
+            Ok::<_, FlightError>(())
         }
         .await
         {
@@ -134,13 +135,12 @@ impl Session {
 
     pub async fn handle_stdin(&mut self) {
         let mut lines = std::io::stdin().lock().lines();
-        // TODO support multi line
         while let Some(Ok(line)) = lines.next() {
             let line = line.trim_end();
             if let Err(e) = async {
                 let result = self.execute_query(line).await?;
                 print_query_result(&result, &self.args)?;
-                Ok::<_, ArrowError>(())
+                Ok::<_, FlightError>(())
             }
             .await
             {
@@ -149,7 +149,7 @@ impl Session {
         }
     }
 
-    async fn execute_query(&mut self, query: &str) -> Result<QueryResult, ArrowError> {
+    async fn execute_query(&mut self, query: &str) -> Result<QueryResult, FlightError> {
         let start = Instant::now();
         let flight_info = if self.args.prepared {
             let mut stmt = self.client.prepare(query.to_string(), None).await?;
@@ -167,15 +167,15 @@ impl Session {
             let ticket = endpoint
                 .ticket
                 .as_ref()
-                .ok_or_else(|| ArrowError::IpcError("Ticket is emtpy".to_string()))?
+                .ok_or_else(|| {
+                    FlightError::Arrow(ArrowError::IpcError("Ticket is emtpy".to_string()))
+                })?
                 .clone();
             let mut client = self.client.clone();
             handles.push(tokio::spawn(async move {
                 let flight_data = client.do_get(ticket).await?;
-                let result: Vec<RecordBatch> = flight_data.try_collect().await.map_err(|e| {
-                    ArrowError::IpcError(format!("Failed to collect record batches: {e}"))
-                })?;
-                Ok::<Vec<RecordBatch>, ArrowError>(result)
+                let result: Vec<RecordBatch> = flight_data.try_collect().await?;
+                Ok::<Vec<RecordBatch>, FlightError>(result)
             }));
         }
 
