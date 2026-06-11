@@ -81,9 +81,9 @@ impl Session {
                 }
                 Ok(line) => {
                     let line = line.trim_end();
-                    if line.ends_with('\\') {
+                    if let Some(stripped) = line.strip_suffix('\\') {
                         // Multi-line continuation: strip trailing \ and append with a newline
-                        query.push_str(&line[..line.len() - 1]);
+                        query.push_str(stripped);
                         query.push('\n');
                         continue;
                     }
