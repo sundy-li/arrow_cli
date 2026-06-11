@@ -68,19 +68,29 @@ impl Session {
     }
 
     pub async fn handle_repl(&mut self) {
-        let mut query = "".to_owned();
+        let mut query = String::new();
         let mut rl = Editor::<CliHelper, DefaultHistory>::new().unwrap();
         rl.set_helper(Some(CliHelper::new()));
         rl.load_history(&get_history_path()).ok();
 
         loop {
-            match rl.readline(&self.prompt) {
+            let readline = rl.readline(&self.prompt);
+            match readline {
                 Ok(line) if line.starts_with("--") => {
                     continue;
                 }
                 Ok(line) => {
                     let line = line.trim_end();
-                    query.push_str(&line.replace("\\\n", ""));
+                    if let Some(stripped) = line.strip_suffix('\\') {
+                        // Multi-line continuation: strip trailing \ and append with a newline
+                        query.push_str(stripped);
+                        query.push('\n');
+                        continue;
+                    }
+                    if !query.is_empty() {
+                        query.push('\n');
+                    }
+                    query.push_str(line);
                 }
                 Err(e) => match e {
                     ReadlineError::Io(err) => {
@@ -88,6 +98,7 @@ impl Session {
                     }
                     ReadlineError::Interrupted => {
                         println!("^C");
+                        query.clear();
                     }
                     ReadlineError::Eof => {
                         break;
