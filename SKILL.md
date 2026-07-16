@@ -39,6 +39,14 @@ Output:
 1 rows in set (tickets received in 0.008 sec, rows received in 0.012 sec)
 ```
 
+### Execute SQL from a file and exit
+
+```bash
+arrow_cli --host localhost --port 8900 --user admin --password abc --file query.sql
+```
+
+The file content is read as a single SQL statement and executed once, then the CLI exits.
+
 ### Pipe SQL through standard input
 
 ```bash
