@@ -55,8 +55,16 @@ struct Args {
     )]
     output: Output,
 
-    #[clap(short = 'c', long, help = "Execute SQL command and exit")]
+    #[clap(
+        short = 'c',
+        long,
+        help = "Execute SQL command and exit",
+        conflicts_with = "file"
+    )]
     command: Option<String>,
+
+    #[clap(short = 'f', long, help = "Execute SQL commands from a file and exit")]
+    file: Option<String>,
 }
 
 #[tokio::main]
@@ -67,7 +75,7 @@ pub async fn main() -> Result<(), FlightError> {
     // Authenticate
     let url = format!("{protocol}://{}:{}", args.host, args.port);
     let endpoint = endpoint(&args, url)?;
-    let is_repl = atty::is(Stream::Stdin) && args.command.is_none();
+    let is_repl = atty::is(Stream::Stdin) && args.command.is_none() && args.file.is_none();
     let mut session = session::Session::try_new(endpoint, is_repl, args).await?;
 
     session.handle().await;

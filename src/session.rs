@@ -62,6 +62,9 @@ impl Session {
         } else if self.args.command.is_some() {
             let command = self.args.command.clone().unwrap();
             self.handle_command(&command).await;
+        } else if self.args.file.is_some() {
+            let file = self.args.file.clone().unwrap();
+            self.handle_file(&file).await;
         } else {
             self.handle_stdin().await;
         }
@@ -141,6 +144,17 @@ impl Session {
         .await
         {
             eprintln!("handle command {command} err: {e}");
+        }
+    }
+
+    pub async fn handle_file(&mut self, file: &str) {
+        match std::fs::read_to_string(file) {
+            Ok(query) => {
+                self.handle_command(query.trim_end()).await;
+            }
+            Err(e) => {
+                eprintln!("read file {file} err: {e}");
+            }
         }
     }
 

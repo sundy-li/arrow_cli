@@ -23,7 +23,7 @@ Usage: arrow_cli [OPTIONS]
 
 Options:
   -u, --user <USER>          User name [default: root]
-  -p, --password <PASSWORD>  User password [default: ]
+  -p, --password <PASSWORD>  User password [default: ""]
       --host <HOST>          Flight SQL Server host [default: 127.0.0.1]
   -P, --port <PORT>          Flight SQL Server port [default: 4100]
       --tls
@@ -32,7 +32,9 @@ Options:
       --print-schema         Print resultset schema
       --output <OUTPUT>      Result output format [default: table] [possible values: table, json, csv, tsv, psv]
   -c, --command <COMMAND>    Execute SQL command and exit
+  -f, --file <FILE>          Execute SQL commands from a file and exit
   -h, --help                 Print help
+  -V, --version              Print version
 ```
 
 ## Examples
@@ -56,6 +58,19 @@ Options:
 {"number":0}
 {"number":1}
 {"number":2}
+```
+
+### Execute SQL from a file
+
+```bash
+❯ arrow_cli -h arch -u sundy -p abc --port 8900 --output table --file query.sql
++-------------+
+| avg(number) |
++-------------+
+| 4.5         |
++-------------+
+
+1 rows in set (tickets received in 0.036 sec, rows received in 0.036 sec)
 ```
 
 ### StdIn pipe with CSV output
